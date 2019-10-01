@@ -1,0 +1,85 @@
+; ; Exercise 4
+; A Nat is one of:
+; - 0
+; - (add1 Nat)
+; is the same as: (+ 1 Nat)
+
+(define NAT0 0)
+(define NAT1 (add1 NAT0))
+(define NAT2 (add1 NAT1))
+
+;nat-temp : Nat -> Unknown?
+#;(define (nat-temp n)
+  (cond
+    [(zero? n) ...]
+    [(positive? n)...1 ...(nat-temp (sub1 n))...]))
+
+; ; Exercise 5
+;Design the function even-nat? which takes a Nat and returns true if the Nat is an even number. Yes, zero is even. You may not use even? or odd? to write this function.
+; even-nat? : Nat -> Boolean
+; Returns whether or not the Nat is even
+(check-expect (even-nat? 5) false)
+(check-expect (even-nat? 2) true)
+(check-expect (even-nat? 0) true)
+(define (even-nat? n)
+  (cond 
+    [(zero? n) true]
+    [(positive? n) (not(even-nat? (sub1 n)))]))
+
+; ; Exercise 6
+;Design the function nat+ which takes two Nats and returns their sum. You may not use + to write this function.
+; nat+ : Nat Nat --> Nat
+; Returns the sum of two natural numbers
+(check-expect (nat+ 1 2) 3)
+(check-expect (nat+ 0 0) 0)
+(define (nat+ nat1 nat2)
+   (cond
+    [(zero? nat1) nat2]
+    [(positive? nat1) (nat+ (sub1 nat1)(add1 nat2))]))
+
+
+; ; Exercise 7
+;The program will start with a blank screen and each time the clock ticks it will add a new circle of a random color and size underneath the current set of circles.
+;The program should stop when the outermost circle is the same size as the screen.
+
+(define BG "square" 800 800 "black")
+
+(define-struct ring [color size others])
+; A RingSet is one of:
+; - "no rings"
+;    and represents the starting state where nothing is on the screen
+; - (make-ring Color Nat RingSet)
+;    and represents an underlying circle of a given color and radius
+
+(define (hypnosis ring)
+  (big-bang ring
+    [to-draw scene]
+    [on-tick make-ring]
+    [stop-when too-big]))
+
+;
+
+(define (make-ring Color Nat RingSet)
+
+(define 
+
+; choose-color : Nat[0,7) -> Color
+; Choose the color corresponding with the given number
+(check-expect (choose-color 0) "red")
+(check-expect (choose-color 1) "orange")
+(check-expect (choose-color 2) "yellow")
+(check-expect (choose-color 3) "green")
+(check-expect (choose-color 4) "blue")
+(check-expect (choose-color 5) "purple")
+(check-expect (choose-color 6) "pink")
+(define (choose-color n)
+  (cond [(= n 0) "red"]
+        [(= n 1) "orange"]
+        [(= n 2) "yellow"]
+        [(= n 3) "green"]
+        [(= n 4) "blue"]
+        [(= n 5) "purple"]
+        [(= n 6) "pink"]))
+
+
+  
