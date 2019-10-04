@@ -35,6 +35,7 @@
 
 
 ;Exercise 2: Consider the following data definition, inspired by the game Barrel of Monkeys:
+
 #;(define-struct monkey [name c others])
 ; A MonkeyChain is a (make-monkey String String MonkeyChain)
 ; and represents a collection of monkeys where:
@@ -47,6 +48,8 @@
 ; The data definition for MonkeyChain contradicts itself because it define MonkeyChain as a
 ; make-monkey with a parameter of MonkeyChain and the other monkeys it is attached to.
 
+
+
 ; Exercise 3
 
 (define-struct delay [reason minutes])
@@ -57,6 +60,7 @@
 ; - false
 ; and represents number of minutes away, a status message (e.g., "arriving"),
 ; minutes of delay and reason, or that the train has been cancelled
+
 (define TRAINSTATUS1 4)
 (define TRAINSTATUS2 "arriving")
 (define TRAINSTATUS3 (make-delay "due to signaling error" 10))
@@ -86,6 +90,7 @@
                                          " minutes due to "
                                          (delay-reason TrainStatus) ".")]))
 
+
 ; Exercise 4:
 
 (define-struct red [ticks-left])
@@ -97,74 +102,117 @@
 ; and represents the current state of the game,
 ; either red or blue, and how many ticks are left
 ; to show in that state before switching to the other
+
 (define RGS-1 (make-red 154))
 (define RGS-2 (make-blue 14))
 
 (define (red-temp RGS)
-  (...(red-ticks-left RGS)...))
+  (... (red-ticks-left RGS) ...))
 
 (define (blue-temp RGS)
-  (...(blue-ticks-left RGS)...))
-  
+  (... (blue-ticks-left RGS) ...))
 
-;Design the function reflexes that 
-;The input to reflexes can be ignored (and given the Any type), but the output should be a Boolean
-;indicating whether or not the user exited the program during a blue screen.
+
+(define-struct game [rgs bool])
+
+; A Game is a (make-game RGS Bool)
+; and represents the current state of the game,
+; while also giving a boolean representation of whether or not
+; a key has been pressed
+
+(define GAME-1 (make-game RGS-1 true))
+(define GAME-2 (make-game RGS-2 true))
+(define GAME-3 (make-game RGS-2 false))
+
+(define (game-temp g)
+  (... (game-rgs g) ...
+       (game-bool g) ...)) 
 
 ;reflexes : Any -> Boolean
 ;shows a red screen for 140 ticks and then shows a blue screen for 14 ticks and
 ;repeats until the user ends the program (by pressing any key).
 
-(define (reflexes Any)
-  (big-bang Any
-    [to-draw reflex-screens]
-    [on-tick change-rgs]
-    [stop-when keypress]))
-
+(define (reflexes g)
+  (blue?
+   (game-rgs
+    (big-bang g
+      [to-draw reflex-screens]
+      [on-tick change-rgs]
+      [on-key key-pressed]
+      [stop-when bool-stop]))))
 
 ; reflex-screens : RGS -> Image
 ; creates red and blue screens based on the ReflexGameState
+(check-expect (reflex-screens GAME-1) (square 500 "solid" "red"))
+(check-expect (reflex-screens GAME-2) (square 500 "solid" "blue"))
 
-(check-expect (reflex-screens RGS-1) (square 500 "solid" "red"))
-(check-expect (reflex-screens RGS-2) (square 500 "solid" "blue"))
-
-(define (reflex-screens rgs)
+(define (reflex-screens g)
   (cond
-    [(> rgs 14) (square 500 "solid" "red")]
-    [(<= rgs 14) (square 500 "solid" "blue")]))
+    [(red? (game-rgs g)) (square 500 "solid" "red")] 
+    [(blue? (game-rgs g)) (square 500 "solid" "blue")]))
+
 
 ; change-rgs : TickEvent RGS -> RGS
 ; Changes the RGS based on the number of ticks. 
-(check-expect (change-rgs RGS-1) 153)
-(check-expect (change-rgs RGS-2) 13)
+(check-expect (change-rgs GAME-1) (red-help GAME-1))
+(check-expect (change-rgs GAME-2) (blue-help GAME-2))
 
-(define (change-rgs rgs)
+(define (change-rgs g)
+  (cond 
+    [(red? (game-rgs g)) (red-help g)]
+    [(blue? (game-rgs g)) (blue-help g)]))
+   
+   
+; blue-help : ReflexGameState -> Game
+; changes the ReflexGameState to red if the number of ticks is above or equal 14 and subtracts 1 from
+;the ticks
+(check-expect (blue-help GAME-2) (make-game (make-blue 13) true))
+
+(define (blue-help g)
   (cond
-    [(zero? rgs) 154]
-    [(positive? rgs) (- rgs 1)]))
+    [(zero? (blue-ticks-left (game-rgs g))) (make-game (make-red 154) (game-bool g))]
+    [(<= (blue-ticks-left (game-rgs g)) 14)
+     (make-game (make-blue (sub1 (blue-ticks-left (game-rgs g))))(game-bool g))]))     
 
-; keypress : KeyEvent -> Boolean                                                                ; CHECK SIGNATURE WITH TA
-; Stops program when any key is pressed
+; red-help : ReflexGameState -> ReflexGameState
+; changes the ReflexGameState to red if the number of ticks is above or equal 14 and subtracts 1 from
+;the ticks 
+(check-expect (red-help GAME-1) (make-game (make-red 153) true))                            
 
-(check-expect (keypress RGS-1 key) false)
-(check-expect (keypress RGS-2 key) true)
-
-(define (keypress rgs key)
+(define (red-help g)
   (cond
-    [(> rgs 14) false]
-    [(<= rgs 14) true]))
+    [(> (red-ticks-left (game-rgs g)) 14) (make-game (make-red (sub1 (red-ticks-left (game-rgs g))))(game-bool g))]
+    [(<= (red-ticks-left (game-rgs g)) 14) (make-game (make-blue (sub1 (red-ticks-left (game-rgs g))))(game-bool g))])) 
+
+
+(define REDEND "red")
+(define BLUEEND "blue") 
+
+; key-pressed : Game KeyEvent -> Boolean                                            
+; Stops program when any key is pressed, outputs true if ends on blue screen and false if red screen
+                                                                                            ;check-expect for key-press?
+
+(define (key-pressed g key)
+  (if (key-event? key) (make-game (game-rgs g) (not (game-bool g))) g))
+
+; bool-stop : Game -> Boolean                                            
+; Stops program when any key is pressed, outputs true if ends on blue screen and false if red screen
+(check-expect (bool-stop GAME-1) false)
+(check-expect (bool-stop GAME-2) false)
+(define (bool-stop g)
+  (boolean=? (game-bool g) false))
 
 
 ; Exercise 5
 ; A Posn is a (make-posn Number Number)
 ; and represents a 2D position
 
-(define POSN-1 (make-posn 3 4))
-(define POSN-2 (make-posn 30 40))
-(define POSN-3 (make-posn 81 17))
-
-(define-struct circ [radius center])
-(define-struct sq [side center])
+;(define POSN-1 (make-posn 3 4))
+;(define POSN-2 (make-posn 30 40))
+;(define POSN-3 (make-posn 81 17))
+;
+;(define-struct circ [radius center])
+;(define-struct sq [side center])
  
 ; A Shape is one of...
 ; - (make-circ PosNumber Posn)
@@ -172,19 +220,92 @@
 ; and represents a cirle with a radius and center
 ; or a square with side length and center
 
-(define CIRCLE-1 (make-circ 30 POSN-1))
-(define CIRCLE-2 (make-circ 75 POSN-2))
-(define CIRCLE-3 (make-circ 62 POSN-3))
+;(define CIRCLE-1 (make-circ 30 POSN-1))
+;(define CIRCLE-2 (make-circ 75 POSN-2))
+;(define CIRCLE-3 (make-circ 62 POSN-3))
+;
+;(define (circ-temp circ)
+; (... (circ-radius circ) ... (circ-center circ) ...))
 
-(define (circ-temp circ)
-  (... (circ-radius circ) ... (circ-center circ) ...))
+;(define SQUARE-1 (make-sq 30 POSN-1))
+;(define SQUARE-2 (make-sq 75 POSN-2))
+;(define SQUARE-3 (make-sq 62 POSN-3))
+;
+;(define (sq-temp sq)
+; (... (sq-side sq) ... (sq-center sq) ...))
 
-(define SQUARE-1 (make-sq 30 POSN-1))
-(define SQUARE-2 (make-sq 75 POSN-2))
-(define SQUARE-3 (make-sq 62 POSN-3))
 
-(define (sq-temp sq)
-  (... (sq-side sq) ... (sq-center sq) ...))
+
+
+
+
+
+; Exercise 7:
+; A planetary system has some number of planets, each with a name, distance from the host star
+; (in astronomical units), and some number of moons, each of which has a relative ordering in distance
+; from the planet and a mass (in 1016 kg). Design the function bigger-moon?, which determines if any
+; planet in a system has a moon whose mass is greater than a supplied value.
+
+(define-struct moon [order mass])
+
+(define MOON-1 (make-moon 1 5000))
+(define MOON-2 (make-moon 1 1000))
+(define MOON-3 (make-moon 2 3050))
+
+; a List of Moons (LoM) is one of
+; - empty
+; (cons Moon LoM)
+; Intepretation: Represents a list of moons that orbit the same planet
+
+(define LOM-0 empty)
+(define LOM-1 (cons MOON-1 LOM-0))
+ 
+(define (moon-temp moon)
+  (... (moon-order moon) ...
+       (moon-mass moon) ...))
+
+
+(define-struct planet [name distance moon])
+
+(define PLANET-1 (make-planet "Earth" 960000000 LOM-1))
+(define PLANET-2 (make-planet "Mars" 129000000 LOM-1))
+
+(define SYSTEM-0 empty)
+(define SYSTEM-1 (cons PLANET-1 SYSTEM-0))
+; a List of Planets (LoP) is one of
+; - empty
+; (cons Planet LoP)
+; Intepretation: Represents a list of planets
+
+(define (planet-temp planet)
+  (... (planet-name planet) ...
+       (planet-distance planet) ...
+       (planet-moon planet) ...))
+
+
+
+; bigger-moon? : System Mass -> Boolean
+; accesses the lists created by planet and moon and checks if they are empty
+(check-expect (bigger-moon? SYSTEM-1 6000) false)
+(check-expect (bigger-moon? SYSTEM-1 2000) true)
+
+(define (bigger-moon? system num)
+  (cond
+    [(empty? system) false]
+    [(cons? system) (if (list-moons (planet-moon (first system)) num)
+                        true (bigger-moon? (rest system) num))]
+    ))
+
+
+; list-moons : List Number -> Boolean
+; Checks if the moon mass is greater than the supplied value
+(check-expect (list-moons LOM-0 35) false)
+(check-expect (list-moons LOM-1 7000) false)
+(define (list-moons lom num)
+  (cond
+    [(empty? lom) false]
+    [(cons? lom) (if (> (moon-mass (first lom)) num)
+                     true (list-moons (rest lom) num))]))
 
 
 
