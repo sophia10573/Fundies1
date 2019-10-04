@@ -181,8 +181,10 @@
 
 (define (red-help g)
   (cond
-    [(> (red-ticks-left (game-rgs g)) 14) (make-game (make-red (sub1 (red-ticks-left (game-rgs g))))(game-bool g))]
-    [(<= (red-ticks-left (game-rgs g)) 14) (make-game (make-blue (sub1 (red-ticks-left (game-rgs g))))(game-bool g))])) 
+    [(> (red-ticks-left (game-rgs g)) 14)
+     (make-game (make-red (sub1 (red-ticks-left (game-rgs g))))(game-bool g))]
+    [(<= (red-ticks-left (game-rgs g)) 14)
+     (make-game (make-blue (sub1 (red-ticks-left (game-rgs g))))(game-bool g))])) 
 
 
 (define REDEND "red")
@@ -190,7 +192,7 @@
 
 ; key-pressed : Game KeyEvent -> Boolean                                            
 ; Stops program when any key is pressed, outputs true if ends on blue screen and false if red screen
-                                                                                            ;check-expect for key-press?
+;check-expect for key-press?
 
 (define (key-pressed g key)
   (if (key-event? key) (make-game (game-rgs g) (not (game-bool g))) g))
@@ -204,42 +206,326 @@
 
 
 ; Exercise 5
-; A Posn is a (make-posn Number Number)
-; and represents a 2D position
 
-;(define POSN-1 (make-posn 3 4))
-;(define POSN-2 (make-posn 30 40))
-;(define POSN-3 (make-posn 81 17))
-;
-;(define-struct circ [radius center])
-;(define-struct sq [side center])
- 
+; A Posn is a (make-posn Number Number)
+; Interpretation: represents a 2D position
+(define POSN-0 (make-posn 200 200))
+(define POSN-1 (make-posn 175 175))
+(define POSN-2 (make-posn 150 150))
+(define POSN-3 (make-posn 150 250))
+
+(define-struct circ [radius center])
+; a Circle is a (make-circ PosNumber Posn)
+; - radius is a positive number representing the radius of a circle
+; - center is a Posn representing the center as an order pair (posn-x, posn-y)
+;; Interpretation: a circle with a radius and a center.
+(define CIRC-0 (make-circ 30 POSN-0))
+(define CIRC-1 (make-circ 50 POSN-1))
+
+; circ-temp : Circle -> ???
+#;(define (circ-temp circ)
+  (... (circ-radius circ)
+       (circ-center circ)...))
+
+
+(define-struct sq [side center])
+; a Square is a (make-sq PosNumber Posn)
+; - side represents the length of the side of a square
+; - center is a Posn representing the center as an order pair (posn-x, posn-y)
+;; Interpretation: a square with a side length and a center.
+(define SQ-0 (make-sq 40 POSN-2))
+(define SQ-1 (make-sq 50 POSN-3))
+
+; sq-temp : Square -> ???
+#;(define (sq-temp sq)
+  (... (sq-side sq)
+       (sq-center sq)...))
+
 ; A Shape is one of...
 ; - (make-circ PosNumber Posn)
 ; - (make-sq PosNumber Posn)
-; and represents a cirle with a radius and center
+; and represents a circle with a radius and center
 ; or a square with side length and center
+;; Interpretation: A shape that is either a circle or a square.
+(define SHAPE-0 CIRC-0)
+(define SHAPE-1 CIRC-1)
+(define SHAPE-2 SQ-0)
+(define SHAPE-3 SQ-1)
 
-;(define CIRCLE-1 (make-circ 30 POSN-1))
-;(define CIRCLE-2 (make-circ 75 POSN-2))
-;(define CIRCLE-3 (make-circ 62 POSN-3))
-;
-;(define (circ-temp circ)
-; (... (circ-radius circ) ... (circ-center circ) ...))
+; shape-temp : Shape -> ???
+#;(define (shape-temp s)
+  (cond
+    [(circ? s) (circ-temp s)]
+    [(sq? s)   (sq-temp s)])) 
 
-;(define SQUARE-1 (make-sq 30 POSN-1))
-;(define SQUARE-2 (make-sq 75 POSN-2))
-;(define SQUARE-3 (make-sq 62 POSN-3))
-;
-;(define (sq-temp sq)
-; (... (sq-side sq) ... (sq-center sq) ...))
+(define-struct shapestate [shape filled])
+; A ShapeState is a (make-shape-state Shape Boolean)
+; and represents whether a shape is outlined or solid
+; - shape is a Shape
+; - filled is a Boolean which if True means a shape is filled,
+; if false it is just an outline
+;; Interpretation: The state of a shape, given as which shape it is and if it is outlined or filled.
+(define SHAPE-STATE-1 (make-shapestate SHAPE-1 true))
+(define SHAPE-STATE-2 (make-shapestate SHAPE-1 false))
+(define SHAPE-STATE-3 (make-shapestate SHAPE-2 true))
+(define SHAPE-STATE-4 (make-shapestate SHAPE-2 false))
+
+; shapestate-temp : ShapeState -> ???
+#;(define (shapestate-temp ss)
+  (... (shape-temp (shapestate-shape ss)) ... (shapestate-filled ss) ...))
+
+; blink : ShapeState -> Posn
+; returns the center posn of the shape that is being animated
+(check-expect (blink SHAPE-STATE-1)
+              (circ-center
+               (shapestate-shape
+                (blink-helper
+                 (make-shapestate
+                  (make-circ
+                   (circ-radius (shapestate-shape SHAPE-STATE-1))
+                   (make-posn 175 175))false)))))
+
+(check-expect (blink SHAPE-STATE-3)
+              (sq-center
+               (shapestate-shape
+                (blink-helper
+                 (make-shapestate
+                  (make-sq
+                   (sq-side (shapestate-shape SHAPE-STATE-3))
+                   (make-posn 150 150))false)))))
+ 
+(define (blink ss)
+  (if (circ? (shapestate-shape ss)) (circ-center (shapestate-shape (blink-helper ss)))
+      (sq-center (shapestate-shape (blink-helper ss)))))
+
+; blink-helper : ShapeState -> ShapeState
+; animates a shape state that can move on an empty screen
+(define (blink-helper ss)
+  (big-bang ss
+    [to-draw draw-scene]
+    [on-mouse change-shape]))
+
+; draw-scene : ShapeState -> Image
+; creates an image given a shape state
+(check-expect (draw-scene SHAPE-STATE-1)
+              (place-image (circle 50 "solid" "purple") 175 175 (empty-scene 300 300)))
+(check-expect (draw-scene SHAPE-STATE-2)
+              (place-image (circle 50 "outline" "purple") 175 175 (empty-scene 300 300)))
+(check-expect (draw-scene SHAPE-STATE-3)
+              (place-image (square 40 "solid" "purple") 150 150 (empty-scene 300 300)))
+(check-expect (draw-scene SHAPE-STATE-4)
+              (place-image (square 40 "outline" "purple") 150 150 (empty-scene 300 300)))
+(define (draw-scene ss)
+  (cond
+    [(and (circ? (shapestate-shape ss)) (shapestate-filled ss))
+     (place-image (circle (circ-radius (shapestate-shape ss)) "solid" "purple")
+                  (posn-x(circ-center (shapestate-shape ss)))
+                  (posn-y(circ-center (shapestate-shape ss)))
+                  (empty-scene 300 300))]
+    [(and (sq? (shapestate-shape ss)) (shapestate-filled ss))
+     (place-image (square (sq-side (shapestate-shape ss)) "solid" "purple")
+                  (posn-x(sq-center (shapestate-shape ss)))
+                  (posn-y(sq-center (shapestate-shape ss)))
+                  (empty-scene 300 300))]
+    [(and (circ? (shapestate-shape ss)) (not (shapestate-filled ss)))
+     (place-image (circle (circ-radius (shapestate-shape ss)) "outline" "purple")
+                  (posn-x(circ-center (shapestate-shape ss)))
+                  (posn-y(circ-center (shapestate-shape ss)))
+                  (empty-scene 300 300))]
+    [(and (sq? (shapestate-shape ss)) (not (shapestate-filled ss)))
+     (place-image (square (sq-side (shapestate-shape ss)) "outline" "purple")
+                  (posn-x(sq-center (shapestate-shape ss)))
+                  (posn-y(sq-center (shapestate-shape ss)))
+                  (empty-scene 300 300))]))
+   
+; change-shape : ShapeState Num Num MouseEvent -> ShapeState
+;; Changes the ShapeState on a MouseEvent
+(check-expect (change-shape SHAPE-STATE-1 1 1 "button-down")
+              (make-shapestate
+               (make-circ
+                (circ-radius (shapestate-shape SHAPE-STATE-1))
+                (make-posn 1 1))
+               true))
+(check-expect (change-shape SHAPE-STATE-1 200 200 "button-down")
+              (make-shapestate
+               (make-circ
+                (circ-radius (shapestate-shape SHAPE-STATE-1))
+                (make-posn 175 175))
+               false))
+
+(check-expect (change-shape SHAPE-STATE-3 1 1 "button-down")
+              (make-shapestate
+               (make-sq
+                (sq-side (shapestate-shape SHAPE-STATE-3))
+                (make-posn 1 1))
+               true))
+(check-expect (change-shape SHAPE-STATE-3 100 100 "button-down")
+              (make-shapestate
+               (make-sq
+                (sq-side (shapestate-shape SHAPE-STATE-3))
+                (make-posn 100 100))
+               true))
+(check-expect (change-shape SHAPE-STATE-3 0 0 "") SHAPE-STATE-3)
+
+(define (change-shape ss x y me)
+  (cond
+    [(and (string=? me "button-down")
+          (circ? (shapestate-shape ss)) (in-circ? x y (shapestate-shape ss)))
+     (make-shapestate (make-circ (circ-radius (shapestate-shape ss))
+                                 (circ-center (shapestate-shape ss)))
+                      (not(shapestate-filled ss)))]
+    [(and (string=? me "button-down")
+          (circ? (shapestate-shape ss)) (not (in-circ? x y (shapestate-shape ss))))
+     (make-shapestate (make-circ (circ-radius (shapestate-shape ss))
+                                 (make-posn x y))
+                      (shapestate-filled ss))]
+    [(and (string=? me "button-down")
+          (sq? (shapestate-shape ss)) (in-sq? x y (shapestate-shape ss)))
+     (make-shapestate (make-sq (sq-side (shapestate-shape ss))
+                               (sq-center (shapestate-shape ss)))
+                      (not (shapestate-filled ss)))]
+    [(and (string=? me "button-down")
+          (sq? (shapestate-shape ss)) (not (in-sq? x y (shapestate-shape ss))))
+     (make-shapestate (make-sq (sq-side (shapestate-shape ss))
+                               (make-posn x y))
+                      (shapestate-filled ss))]
+    [else ss]))
+
+; in-circ? : Num Num Circle -> Boolean
+; Checks if the coordinates are in the circle
+(check-expect (in-circ? 0 0 CIRC-0) false)
+(check-expect (in-circ? 150 150 CIRC-0) false)
+(define (in-circ? x y c)
+  (< (sqrt (+ (sqr (- x (posn-x (circ-center c))))
+              (sqr (- y (posn-y (circ-center c))))))
+     (circ-radius c)))
+                     
+; in-sq? : Num Num Square -> Boolean
+; Checks if the coordinates are in the square
+(check-expect (in-sq? 0 0 SQ-0) false)
+(check-expect (in-sq? 95 95 SQ-0) false)
+(define (in-sq? x y s)
+  (and (< (abs (- x (posn-x (sq-center s)))) (/ (sq-side s) 2))
+       (< (abs (- y (posn-y (sq-center s)))) (/ (sq-side s) 2))))
 
 
 
+; Exercise 6
+
+(define-struct building [width height color right])
+
+; A Skyline is one of:
+; - false
+; - (make-building PosInteger PosInteger String Skyline)
+; and represents either an empty skyline or a building with
+; a width and height in pixels, the color of the building, and the
+; rest of the skyline to the right of the building
+;; Interpretation: A skyline that could be empty or could be comprised of building(s).
+
+(define SKYLINE-1 false)
+(define BUILDING-1 (make-building 20 20 "red" SKYLINE-1))
+(define SKYLINE-2 BUILDING-1)
+(define BUILDING-2 (make-building 30 30 "pink" SKYLINE-2))
+(define SKYLINE-3 BUILDING-2)
+(define BUILDING-3 (make-building 25 60 "purple" SKYLINE-3))
+(define SKYLINE-4 BUILDING-3)
+(define BUILDING-4 (make-building 25 60 "red" SKYLINE-4))
+(define SKYLINE-5 BUILDING-4)
+
+; building-temp : Building -> ???
+#;(define (building-temp b)
+  (... (building-width b)
+       (building-height b)
+       (building-color b)
+       (skyline-temp (building-right b)) ...))
+
+; skyline-temp : Skyline -> ???
+#;(define (skyline-temp s)
+  (cond
+    [(boolean? s) ...]
+    [(building? s) (skyline-temp (building-temp s))]))
+
+;; draw-skyline : Skyline -> Image
+;; Draws a skyline
+(check-expect (draw-skyline SKYLINE-1) empty-image)
+(check-expect (draw-skyline SKYLINE-3)
+              (beside/align "bottom"
+                            (rectangle (building-width SKYLINE-3)
+                                       (building-height SKYLINE-3)
+                                       "solid"
+                                       (building-color SKYLINE-3))
+                            (rectangle (building-width SKYLINE-2)
+                                       (building-height SKYLINE-2)
+                                       "solid"
+                                       (building-color SKYLINE-2))))
+
+                                                     
+(define (draw-skyline s)
+  (cond
+    [(boolean? s) empty-image]
+    [(building? s) (beside/align "bottom"
+                                 (rectangle (building-width s)
+                                            (building-height s)
+                                            "solid"
+                                            (building-color s))
+                                 (draw-skyline (building-right s)))]))
+
+;; square-skyline? : Skyline -> Boolean
+;; determines if all the buildings in the skyline are square
+(check-expect (square-skyline? SKYLINE-2) true) 
+(check-expect (square-skyline? SKYLINE-3) true)
+(define (square-skyline? s)
+  (cond
+    [(boolean? s) true]
+    [(building? s) (and (= (building-height s) (building-width s))
+                        (square-skyline? (building-right s)))]))
 
 
+;; doze-red: Skyline -> Skyline
+;; removes all the red buildings from a skyline
+(check-expect (doze-red SKYLINE-1) false)
+(check-expect (doze-red SKYLINE-2) false)
+(check-expect (doze-red SKYLINE-3) (make-building 30 30 "pink" false))
+(check-expect (doze-red SKYLINE-4) (make-building 25 60 "purple"
+                                                  (make-building 30 30 "pink" false)))
+(define (doze-red s)
+  (cond
+    [(boolean? s) s]
+    [(and (building? s) (string=? "red" (building-color s)) (building?(building-right s)))
+     (make-building (building-width (building-right s))
+                    (building-height (building-right s))
+                    (building-color (building-right s))
+                    (doze-red(building-right (building-right s))))]
+    [(and (building? s) (string=? "red" (building-color s)) (boolean? (building-right s))) false]
+    [else (make-building (building-width s)
+                         (building-height s)
+                         (building-color s) 
+                         (doze-red(building-right s)))]))
 
+;; grow : Skyline PosNumber -> Skyline
+;; increase the height of each building by a positive number
+(check-expect (grow SKYLINE-1 40) false)
+(check-expect (grow SKYLINE-2 30) (make-building 20 50 "red" false))
 
+(define (grow s h)
+  (cond
+    [(boolean? s) s]
+    [(building? s) (make-building (building-width s)
+                                  (+ h (building-height s))
+                                  (building-color s)
+                                  (grow (building-right s) h))]))
+
+;; skyline-height : Skyline -> NonNegInteger
+;; returns the height of the tallest building in the skyline
+(check-expect (skyline-height SKYLINE-1) 0)
+(check-expect (skyline-height SKYLINE-3) 30)
+
+(define (skyline-height s)
+  (cond
+    [(boolean? s) 0]
+    [(building? s) (max (building-height s) (skyline-height (building-right s)))]))
+ 
+ 
 ; Exercise 7:
 ; A planetary system has some number of planets, each with a name, distance from the host star
 ; (in astronomical units), and some number of moons, each of which has a relative ordering in distance
@@ -306,19 +592,3 @@
     [(empty? lom) false]
     [(cons? lom) (if (> (moon-mass (first lom)) num)
                      true (list-moons (rest lom) num))]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
